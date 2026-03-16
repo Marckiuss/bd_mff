@@ -1,0 +1,362 @@
+```python
+import pandas as pd
+!pip install openpyxl
+!pip install xlrd
+```
+
+    Requirement already satisfied: openpyxl in /opt/conda/lib/python3.11/site-packages (3.1.2)
+    Requirement already satisfied: et-xmlfile in /opt/conda/lib/python3.11/site-packages (from openpyxl) (1.1.0)
+    Requirement already satisfied: xlrd in /opt/conda/lib/python3.11/site-packages (2.0.1)
+
+
+## 1. Ventas Norte
+
+· Formato CSV delimitado por punto y coma (;)
+
+· El campo Direccion_Envio contiene comas reales (ej: “Calle Mayor, 12”). Debes asegurarte de que Pandas no rompa las filas al leerlo.
+
+· El campo Total_Factura viene como texto con símbolos de moneda (ej: “$1,200.50”). Deberás limpiarlo y convertirlo a float.
+
+
+```python
+df_norte = pd.read_csv('data/ventas_norte_v2.csv', 
+                 sep=';')
+
+# Extraemos las columnas del dataframe
+df_norte = df_norte.rename(columns={'ID_Pedido': 'id_transaccion',
+                                    'Fecha_Transaccion': 'fecha',
+                                    'Producto': 'producto',
+                                    'Unidades': 'cantidad',
+                                    'Total_Factura': 'total_venta',
+                                    'Direccion_Envio':'ciudad'
+                                   })
+
+# Eliminamos posibles espacios entre columnas
+df_norte.columns = df_norte.columns.str.strip()
+
+# Calculamos total_venta y añadimos la columna region
+df_norte['total_venta'] = df_norte['total_venta'].str.replace('[\$,]', '', regex=True).astype(float)
+df_norte['region'] = 'Norte'
+
+print(df_norte.dtypes)
+print(df_norte.head)
+```
+
+    id_transaccion      object
+    fecha               object
+    Cliente_Nombre      object
+    ciudad              object
+    producto            object
+    cantidad             int64
+    Precio_Unitario      int64
+    total_venta        float64
+    region              object
+    dtype: object
+    <bound method NDFrame.head of     id_transaccion                fecha Cliente_Nombre  \
+    0           N-1000  2023-05-10 03:00:00      Usuario_0   
+    1           N-1001  2023-06-18 09:00:00      Usuario_1   
+    2           N-1002  2023-03-10 05:00:00      Usuario_2   
+    3           N-1003  2023-05-10 03:00:00      Usuario_3   
+    4           N-1004  2023-02-25 17:00:00      Usuario_4   
+    ..             ...                  ...            ...   
+    145         N-1145  2023-04-17 10:00:00    Usuario_145   
+    146         N-1146  2023-04-08 00:00:00    Usuario_146   
+    147         N-1147  2023-02-01 22:00:00    Usuario_147   
+    148         N-1148  2023-06-13 03:00:00    Usuario_148   
+    149         N-1149  2023-02-24 01:00:00    Usuario_149   
+    
+                            ciudad          producto  cantidad  Precio_Unitario  \
+    0         Gran Vía, 49, Piso 4      Laptop Gamer         1              970   
+    1     Av. Libertad, 30, Piso 4  Mouse Ergonómico         4              927   
+    2     Av. Libertad, 98, Piso 2        Monitor 4K         2             1410   
+    3     Paseo Gracia, 94, Piso 7         Webcam HD         2             1269   
+    4      Calle Mayor, 80, Piso 8         Webcam HD         2              454   
+    ..                         ...               ...       ...              ...   
+    145  Paseo Gracia, 99, Piso 10  Teclado Mecánico         4             1051   
+    146   Paseo Gracia, 64, Piso 4        Monitor 4K         2             1229   
+    147    Calle Mayor, 81, Piso 1        Monitor 4K         1             1040   
+    148    Calle Mayor, 56, Piso 1      Laptop Gamer         1              297   
+    149   Paseo Gracia, 25, Piso 1        Monitor 4K         1              909   
+    
+         total_venta region  
+    0          970.0  Norte  
+    1         3708.0  Norte  
+    2         2820.0  Norte  
+    3         2538.0  Norte  
+    4          908.0  Norte  
+    ..           ...    ...  
+    145       4204.0  Norte  
+    146       2458.0  Norte  
+    147       1040.0  Norte  
+    148        297.0  Norte  
+    149        909.0  Norte  
+    
+    [150 rows x 9 columns]>
+
+
+## 2. Ventas Sur (ventas_sur.xlsx):
+Archivo Excel con múltiples hojas (Q1_2023, Q2_2023)
+
+· 
+Contiene columnas booleanas (Es_Cliente_Corporativo) y de estado (Estado_Envio) que deben conservars
+
+· .
+Debes calcular una columna Total que no existe explícitamente (Precio_Base * Cantidad * (1 - Descuento_Aplicado)).
+
+
+```python
+import pandas as pd
+
+df_excel = pd.read_excel('data/ventas_sur_v2.xlsx', sheet_name=None)
+df_sur = pd.concat(df_excel.values(), ignore_index=True)
+
+# Limpieza preventiva de nombres de columnas
+df_sur.columns = df_sur.columns.str.strip()
+
+# Renombrar columnas
+df_sur = df_sur.rename(columns={
+    'Ref_Venta': 'id_transaccion',
+    'Fecha_Alta': 'fecha',
+    'Articulo': 'producto',
+    'Cantidad': 'cantidad',
+    'Precio_Base':'precio_base',
+    'Descuento_Aplicado':'descuento',
+    'Es_Cliente_Corporativo':'es_cliente_corporativo',
+    'Estado_Envio':'estado_envio'
+})
+
+# Calculamos total_venta
+df_sur['total_venta'] = df_sur['precio_base'] * df_sur['cantidad'] * (1 - df_sur['descuento'].fillna(0))
+
+# Añadimos ciudad (que no existe en este dataset) y región
+df_sur['ciudad'] = ' '
+df_sur['region'] = 'Sur'
+
+# Seleccionamos las columnas que nos interesan
+seleccion_columnas = ['id_transaccion', 'fecha', 'producto', 'cantidad', 'total_venta', 'es_cliente_corporativo','estado_envio','ciudad','region']
+df_sur = df_sur[seleccion_columnas]
+
+print(df_sur.head())
+```
+
+      id_transaccion               fecha          producto  cantidad  total_venta  \
+    0         S-5000 2023-02-11 00:00:00         Webcam HD         9     3060.864   
+    1         S-5001 2023-02-03 12:00:00  Teclado Mecánico         8     4796.800   
+    2         S-5002 2023-04-06 07:00:00  Mouse Ergonómico         6     5828.160   
+    3         S-5003 2023-04-02 05:00:00        Monitor 4K         1      719.694   
+    4         S-5004 2023-06-17 12:00:00  Mouse Ergonómico         2     1177.981   
+    
+       es_cliente_corporativo estado_envio ciudad region  
+    0                   False      Enviado           Sur  
+    1                    True     Devuelto           Sur  
+    2                   False   Completado           Sur  
+    3                    True    Pendiente           Sur  
+    4                    True     Devuelto           Sur  
+
+
+## Este (ventas_este.json):
+
+### JSON de con varios niveles de anidamiento
+
+La información útil está sepultada bajo data - payload - transaccion.
+Debes extraer:
+
+· **ID del registro****
+
+· **Fecha**
+
+· **Ciudad del comprador**
+
+· **Nombre del producto**
+
+· **Cantidad**
+
+· **Precio de lista y el monto del IVA** (que está en un sub-diccionario)
+
+· Descartar metadatos técnicos (latency_ms, source_system)
+
+
+```python
+import pandas as pd
+import json
+
+# Cargamos el JSON
+with open('data/ventas_este_v2.json', 'r') as f:
+    datos_sucios = json.load(f)
+
+# Aplanamos el JSON completo
+df_este = pd.json_normalize(datos_sucios)
+
+# Seleccionamos columnas
+df_este = df_este[[
+    'data.id_registro',
+    'data.payload.fecha_evento',
+    'data.payload.comprador.ubicacion.ciudad',
+    'data.payload.transaccion.detalles_producto.nombre_comercial',
+    'data.payload.transaccion.cantidad_comprada',
+    'data.payload.transaccion.detalles_producto.precio_lista',
+    'data.payload.transaccion.detalles_producto.impuestos.monto_iva'
+]]
+
+# Renombramos columnas
+df_este = df_este.rename(columns={
+    'data.id_registro': 'id_transaccion',
+    'data.payload.fecha_evento': 'fecha',
+    'data.payload.comprador.ubicacion.ciudad': 'ciudad',
+    'data.payload.transaccion.detalles_producto.nombre_comercial': 'producto',
+    'data.payload.transaccion.detalles_producto.precio_lista': 'precio_base',
+    'data.payload.transaccion.cantidad_comprada': 'cantidad',
+    'data.payload.transaccion.detalles_producto.impuestos.monto_iva': 'iva'
+})
+
+df_este.columns = df_este.columns.str.strip()
+
+# Calculamos total_venta
+df_este['total_venta'] = (df_este['precio_base'] + df_este['iva']) * df_este['cantidad']
+df_este['region'] = 'Este'
+
+# Seleccionamos las columnas que nos interesan
+seleccion_columnas = ['id_transaccion', 'fecha', 'ciudad', 'producto', 'cantidad', 'total_venta', 'iva','region']
+df_este = df_este[seleccion_columnas]
+
+print(df_este.head())
+```
+
+      id_transaccion                fecha   ciudad    producto  cantidad  \
+    0         E-8000  2023-06-29 00:00:00  Sevilla  Monitor 4K         1   
+    1         E-8001  2023-04-12 00:00:00  Sevilla   Webcam HD         1   
+    2         E-8002  2023-04-20 00:00:00  Sevilla   Webcam HD         2   
+    3         E-8003  2023-04-14 00:00:00   Madrid   Webcam HD         2   
+    4         E-8004  2023-01-03 00:00:00  Sevilla  Monitor 4K         2   
+    
+       total_venta     iva region  
+    0       608.63  105.63   Este  
+    1      1357.62  235.62   Este  
+    2      2405.48  208.74   Este  
+    3      3037.10  263.55   Este  
+    4      3528.36  306.18   Este  
+
+
+## 4. Dataframe Unificado
+
+El DataFrame final debe tener exactamente estas columnas estandarizadas:
+
+**· id_transaccion**
+
+**· fecha**
+
+**· region**
+
+**· producto**
+
+**· cantidad**
+
+**· total_venta**
+
+**· ciudad**
+
+
+```python
+# Define las columnas exactas solicitadas
+columnas_finales = ['id_transaccion', 'fecha', 'region', 'producto', 'cantidad', 'total_venta', 'ciudad']
+
+# Aplicamos el filtro a cada uno para ir sobre seguro
+df_norte_final = df_norte[columnas_finales]
+df_sur_final = df_sur[columnas_finales]
+df_este_final = df_este[columnas_finales]
+
+# Unificamos
+df_unificado = pd.concat([df_norte_final, df_sur_final, df_este_final], ignore_index=True)
+
+# Guardamos en CSV
+df_unificado.to_csv('ventas_totales.csv', index=False, sep=';', encoding='utf-8')
+
+df_unificado.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id_transaccion</th>
+      <th>fecha</th>
+      <th>region</th>
+      <th>producto</th>
+      <th>cantidad</th>
+      <th>total_venta</th>
+      <th>ciudad</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>N-1000</td>
+      <td>2023-05-10 03:00:00</td>
+      <td>Norte</td>
+      <td>Laptop Gamer</td>
+      <td>1</td>
+      <td>970.0</td>
+      <td>Gran Vía, 49, Piso 4</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>N-1001</td>
+      <td>2023-06-18 09:00:00</td>
+      <td>Norte</td>
+      <td>Mouse Ergonómico</td>
+      <td>4</td>
+      <td>3708.0</td>
+      <td>Av. Libertad, 30, Piso 4</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>N-1002</td>
+      <td>2023-03-10 05:00:00</td>
+      <td>Norte</td>
+      <td>Monitor 4K</td>
+      <td>2</td>
+      <td>2820.0</td>
+      <td>Av. Libertad, 98, Piso 2</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>N-1003</td>
+      <td>2023-05-10 03:00:00</td>
+      <td>Norte</td>
+      <td>Webcam HD</td>
+      <td>2</td>
+      <td>2538.0</td>
+      <td>Paseo Gracia, 94, Piso 7</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>N-1004</td>
+      <td>2023-02-25 17:00:00</td>
+      <td>Norte</td>
+      <td>Webcam HD</td>
+      <td>2</td>
+      <td>908.0</td>
+      <td>Calle Mayor, 80, Piso 8</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+

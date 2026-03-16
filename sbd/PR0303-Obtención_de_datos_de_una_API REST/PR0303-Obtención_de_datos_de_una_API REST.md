@@ -1,0 +1,270 @@
+```python
+!pip install requests
+```
+
+    Requirement already satisfied: requests in /opt/conda/lib/python3.11/site-packages (2.31.0)
+    Requirement already satisfied: charset-normalizer<4,>=2 in /opt/conda/lib/python3.11/site-packages (from requests) (3.3.0)
+    Requirement already satisfied: idna<4,>=2.5 in /opt/conda/lib/python3.11/site-packages (from requests) (3.4)
+    Requirement already satisfied: urllib3<3,>=1.21.1 in /opt/conda/lib/python3.11/site-packages (from requests) (2.0.7)
+    Requirement already satisfied: certifi>=2017.4.17 in /opt/conda/lib/python3.11/site-packages (from requests) (2023.7.22)
+
+
+## 1.- Conexión básica y primer dataFrame
+
+En esta fase, debes conectar con el endpoint de Vehículos y extraer la primera página de resultados (10 elementos).
+
+Los pasos a realizar son:a
+Re  lizaruna petición GET al endpoint https://swapi.dev/api/vehiles/.
+Extrae la clave results del JSON de respuesta.
+Convierte esa lista de diccionarios en un dataframe de Pandas.
+Muestra las primeras 5 filas y el nombre de las columnas obtenidas.
+
+
+```python
+import requests
+import pandas as pd
+
+url = 'https://swapi.dev/api/vehicles'
+
+response = requests.get(url)
+
+if response.status_code == 200:
+    print("¡Éxito! Conexión establecida.")
+    payload = response.json()
+    vehiculos_data = payload['results']
+
+    df_vehiculos = pd.DataFrame(vehiculos_data)
+
+    print("--- Primeras 5 filas del DataFrame ---")
+    print(df_vehiculos[['name','model']].head())
+
+    print("\n--- Nombre de las columnas ---")
+    print(df_vehiculos.columns.tolist())
+
+else:
+    print(f"Error: {response.status_code}")
+```
+
+    ¡Éxito! Conexión establecida.
+    --- Primeras 5 filas del DataFrame ---
+                     name                           model
+    0        Sand Crawler                  Digger Crawler
+    1      T-16 skyhopper                  T-16 skyhopper
+    2    X-34 landspeeder                X-34 landspeeder
+    3  TIE/LN starfighter  Twin Ion Engine/Ln Starfighter
+    4         Snowspeeder                 t-47 airspeeder
+    
+    --- Nombre de las columnas ---
+    ['name', 'model', 'manufacturer', 'cost_in_credits', 'length', 'max_atmosphering_speed', 'crew', 'passengers', 'cargo_capacity', 'consumables', 'vehicle_class', 'pilots', 'films', 'created', 'edited', 'url']
+
+## 2.- Gestión de paginación
+La API de Star Wars devuelve los resultados de 10 en 10. Pero necesitamos el dataset completo de personajes (people).
+
+En este apartado deb· I
+
+Implementar un bucle (while) que verifique la existencia de la clave next  J 
+
+·
+ SON.
+Iterar por todas las páginas (aprox. 82 personajes) recolectando los datos en una ll g
+
+·
+ obal.
+Crear un DataFrame único con todos ireg
+
+·
+ stros.
+Verifica que el DataFrame resultante tenga el mismo número de filas que el valor indicado en la clave count de la API.
+
+```python
+import requests 
+import pandas as pd
+
+url = 'https://swapi.dev/api/people'
+all_people = []
+total_count_api = 0
+
+while url:
+    try:
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            print("¡Éxito! Conexión establecida.")
+            
+            data = response.json()
+            total_count_api = data['count']
+            print(f"Total Api Data: ",total_count_api)
+            all_people.extend(data['results'])
+            url = data['next']
+            print(f'Datos procesados: {len(all_people)}')  
+        
+        else:
+            print(f"Error: {response.status_code}")
+            
+    except Exception as e:
+        print(f"Ocurrió un error inesperado: {e}")
+        break
+
+# Creamos el dataframe
+df_people = pd.DataFrame(all_people)
+
+# Comprobamos la integridad de los datos
+if len(df_people) == total_count_api:
+    print("¡Enhorabuena! El número de registros coincide.")
+else:
+    print("¡Lo siento! Los registros no coinciden.")
+print("="*30)
+```
+
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 10
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 20
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 30
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 40
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 50
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 60
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 70
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 80
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  82
+    Datos procesados: 82
+    ¡Enhorabuena! El número de registros coincide.
+    ==============================
+
+
+## 3.- Cruce de datos
+En este punto vamos a combinar datos de diferentes endpoints, en concreto, enriqueceremos los datos de personajes obtenidos en el punto anterior con información de su planeta de origen.
+
+Tienes que hacer lo siguiente:
+
+La columna homeworld de cada personaje es una URL (ej: https://swapi.dev/api/planets
+
+/1/).
+Crea una función que reciba esa URL y devuelva una tupla con el nombre, terreno y población del planeta (haciendo una nueva petición a la
+
+ API).
+Aplica esta función a los primeros 20 personajes del DataFrame (para no saturar la API) y añade al dataframe de personajes los datos correspondientes a su planeta.
+
+
+```python
+import requests 
+import pandas as pd
+
+url = 'https://swapi.dev/api/planets/'
+all_planets = []
+total_count_planets = 0
+
+while url:
+    try:
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            print("¡Éxito! Conexión establecida.")
+            data = response.json()
+            total_count_planets = data['count']
+            print(f"Total Api Data: ",total_count_planets)
+            all_planets.extend(data['results'])
+            url = data['next']
+            print(f'Datos procesados: {len(all_planets)}')  
+        
+        else:
+            print(f"Error: {response.status_code}")
+            
+    except Exception as e:
+        print(f"Ocurrió un error inesperado: {e}")
+        break
+
+# Creamos el dataframe
+df_planets = pd.DataFrame(all_planets)
+df_planets = df_planets[['name','terrain','residents','url']]
+
+df_combinado = pd.merge(df_people, df_planets, left_on='homeworld', right_on='url', how='left')
+
+df_combinado.rename(columns={
+    'name_x': 'name_person',
+    'name_y': 'name_planet',
+    'url_x': 'url_person',
+    'url_y': 'url_planet',
+    
+}, inplace=True)
+
+# Comprobamos la integridad de los datos
+if len(df_planets) == total_count_planets:
+    print("¡Enhorabuena! El número de registros coincide.")
+else:
+    print("¡Lo siento! Los registros no coinciden.")
+print("="*30)
+```
+
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 10
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 20
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 30
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 40
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 50
+    ¡Éxito! Conexión establecida.
+    Total Api Data:  60
+    Datos procesados: 60
+    ¡Enhorabuena! El número de registros coincide.
+    ==============================
+
+
+## 4.- Expansión de filas (opcional)
+Seguro que te has fijado que la consulta de personajes devuelve un JSON en el que hay un campo que contiene una lista de películas en que aparece dicho personaje. Ese campo combinado es poco útil si queremos realizar operaciones para extraer información de los datos (por ejemplo, cuántos personajes de media hay en cada película?).
+
+Vas a usar la función explode() de Pandas, que expande un registro con un campo con una lista en varios registros, uno por cada elemento que tenga la lista.
+
+Por ejemplo, si tenemos los siguientes datos en un dataframe:
+
+Luke Skywalker	172	['film1', 'film2', 'film3']
+Y ejecutamos df.explode('films') obtendremos lo siguiente:
+
+Luke Skywalker	172	film1
+Luke Skywalker	172	film2
+Luke Skywalker	172	film3
+Realiza esta operación sobre el dataframe del ejercicio anterior para expandir la lista de películas de cada personaje (hazlo sobre un subconjunto de los datos para no sobrecargar la API) y reemplaza el identificador de la película por su título.
+
+
+```python
+df_exploded = df_combinado.explode('films')
+print(df_exploded['name_person'].value_counts())
+```
+
+    name_person
+    C-3PO             6
+    Obi-Wan Kenobi    6
+    R2-D2             6
+    Palpatine         5
+    Yoda              5
+                     ..
+    Mon Mothma        1
+    Yarael Poof       1
+    Ackbar            1
+    Lobot             1
+    Tion Medon        1
+    Name: count, Length: 82, dtype: int64
+
