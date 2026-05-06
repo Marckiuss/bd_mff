@@ -15,3 +15,7 @@
 - [PR0506-Comportamiento_usuarios_netflix](./PR0506-Comportamiento_usuarios_netflix/PR0506.html)
 
 - [PR0507-Creación_de_un_motor_de_recomendación_gastronómico](./PR0507-Creación_de_un_motor_de_recomendación_gastronómico/PR0507.html)
+
+- [PR0601-Capa_bronce_en_Amazon_AWS](./PR0601-Capa_bronce_en_Amazon_AWS/PR0601.html)
+
+- [PR0602-AWS_Lambda](./PR0602-AWS_Lambda/PR0602.html)
